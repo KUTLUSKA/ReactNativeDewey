@@ -3,9 +3,9 @@ const mysql = require('mysql2');
 // Veritabanı bağlantısı
 const connection = mysql.createConnection({
   host: 'localhost',
-  user: 'root',      // MySQL kullanıcı adınız
-  password: 'kutluhan@7', // MySQL şifreniz
-  database: 'DeweyDB'  // Kullanmak istediğiniz veritabanı adı
+  user: 'root',     
+  password: 'kutluhan@7', 
+  database: 'DeweyDB'  
 });
 
 // Bağlantıyı aç

@@ -12,9 +12,9 @@ app.use(bodyParser.json());
 // MySQL Veritabanı Bağlantısı
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'root', // MySQL kullanıcı adınızı buraya yazın
-  password: 'kutluhan@7', // MySQL şifrenizi buraya yazın
-  database: 'deweyDB' // Veritabanı adınızı buraya yazın
+  user: 'root', 
+  password: 'kutluhan@7', 
+  database: 'deweyDB' 
 });
 
 // Veritabanı bağlantısını kontrol et

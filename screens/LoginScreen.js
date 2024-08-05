@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // useState ve useEffect içe aktarıldı
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        if (token) {
+          navigation.navigate('Home');
+        }
+      } catch (error) {
+        console.error('Token kontrolü sırasında hata oluştu:', error);
+      }
+    };
+
+    checkLoginStatus();
+  }, [navigation]);
 
   const handleLogin = async () => {
     if (username === '' || password === '') {
@@ -23,6 +40,7 @@ const LoginScreen = ({ navigation }) => {
       const data = await response.json();
 
       if (response.ok) {
+        await AsyncStorage.setItem('userToken', 'your-token-here');
         Alert.alert('Başarılı', data.message);
         navigation.navigate('Home');
       } else {

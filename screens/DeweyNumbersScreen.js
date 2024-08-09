@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView, ActivityIndicator } from 'react-native';
 
-const API_URL = 'http://localhost:3000'; // Kendi IP adresinizi buraya yazın
+const API_URL = 'http://localhost:3000'; // Replace with your actual API URL
 
 const DeweyNumbersScreen = () => {
   const [mainDeweyNumbers, setMainDeweyNumbers] = useState([]);
   const [selectedDewey, setSelectedDewey] = useState(null);
   const [subCategories, setSubCategories] = useState([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchMainDeweyNumbers();
   }, []);
 
   const fetchMainDeweyNumbers = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/main-dewey-numbers`);
       if (!response.ok) throw new Error('Network response was not ok');
@@ -20,32 +23,53 @@ const DeweyNumbersScreen = () => {
       setMainDeweyNumbers(data);
     } catch (error) {
       console.error('Ana Dewey numaraları alınırken hata:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const fetchDeweyDetails = async (dewey_no) => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/dewey/details?dewey_no=${dewey_no}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setSelectedDewey(data);
-      console.log("Fetching sub categories for:", dewey_no);
-      fetchSubCategories(dewey_no);
+      setSelectedSubCategory(null);
+      fetchSubCategories(data.dewey_no);
     } catch (error) {
       console.error('Dewey detayları alınırken hata:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchSubCategories = async (mainCategory) => {
-    console.log("Fetching sub categories for main category:", mainCategory);
+  const fetchSubCategories = async (deweyNo) => {
+    setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/subcategories?mainCategory=${mainCategory}`);
+      const response = await fetch(`${API_URL}/api/subcategories/${deweyNo}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      console.log("Sub categories data:", data);
       setSubCategories(data);
     } catch (error) {
       console.error('Alt kategoriler alınırken hata:', error);
+      setSubCategories([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubCategoryPress = async (subCategory) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/dewey/details?dewey_no=${subCategory.real_dewey_no}`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      setSelectedSubCategory(data);
+    } catch (error) {
+      console.error('Alt kategori detayları alınırken hata:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -59,14 +83,20 @@ const DeweyNumbersScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderSubCategoryButton = ({ item }) => (
+  const renderSubCategoryItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.subCategoryButton}
-      onPress={() => fetchDeweyDetails(item.dewey_no)}
+      style={[
+        styles.subCategoryItem,
+        selectedSubCategory?.real_dewey_no === item.real_dewey_no && styles.selectedSubCategoryItem
+      ]}
+      onPress={() => handleSubCategoryPress(item)}
     >
-      <Text style={styles.subCategoryButtonText}>{item.dewey_no} - {item.konu_adi}</Text>
+      <Text style={styles.subCategoryNumber}>{item.real_dewey_no}</Text>
+      <Text style={styles.subCategoryTitle}>{item.konu_adi}</Text>
     </TouchableOpacity>
   );
+
+  const displayedCategory = selectedSubCategory || selectedDewey;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,32 +114,27 @@ const DeweyNumbersScreen = () => {
           />
         </View>
         <ScrollView style={styles.rightPanel}>
-          {selectedDewey ? (
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#3498db" />
+          ) : displayedCategory ? (
             <View>
-              <Text style={styles.selectedTitle}>{selectedDewey.konu_adi}</Text>
-              <Text style={styles.selectedNumber}>{selectedDewey.dewey_no}</Text>
+              <Text style={styles.selectedTitle}>{displayedCategory.konu_adi}</Text>
+              <Text style={styles.selectedNumber}>{displayedCategory.dewey_no || displayedCategory.real_dewey_no}</Text>
               <Text style={styles.selectedDescription}>
-                {selectedDewey.aciklama || 'Açıklama bulunamadı.'}
+                {displayedCategory.aciklama || 'Açıklama bulunamadı.'}
               </Text>
-              <View style={styles.subCategoriesContainer}>
-                <Text style={styles.subCategoriesTitle}>Alt Kategoriler:</Text>
-                <View style={styles.subCategoriesGrid}>
-                    {subCategories.length > 0 ? (
-                    subCategories.map((item) => (
-                        <TouchableOpacity
-                        key={item.dewey_no}
-                        style={styles.subCategoryButton}
-                        onPress={() => fetchDeweyDetails(item.dewey_no)}
-                        >
-                        <Text style={styles.subCategoryButtonText}>{item.dewey_no}</Text>
-                        <Text style={styles.subCategoryButtonSubText}>{item.konu_adi}</Text>
-                        </TouchableOpacity>
-                    ))
-                    ) : (
-                    <Text>Alt kategori bulunamadı.</Text>
-                    )}
+              {selectedDewey && (
+                <View style={styles.subCategoriesContainer}>
+                  <Text style={styles.subCategoriesTitle}>Alt Kategoriler:</Text>
+                  <FlatList
+                    data={subCategories}
+                    renderItem={renderSubCategoryItem}
+                    keyExtractor={(item) => item.real_dewey_no}
+                    numColumns={2}
+                    columnWrapperStyle={styles.subCategoryRow}
+                  />
                 </View>
-            </View>
+              )}
             </View>
           ) : (
             <Text style={styles.noSelectionText}>Lütfen sol taraftan bir Dewey numarası seçin.</Text>
@@ -119,6 +144,7 @@ const DeweyNumbersScreen = () => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -188,6 +214,30 @@ const styles = StyleSheet.create({
   },
   subCategoriesContainer: {
     marginTop: 20,
+  },
+  subCategoryItem: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
+    width: '45%',
+  },
+  selectedSubCategoryItem: {
+    backgroundColor: '#d4e6f1',
+    borderColor: '#3498db',
+    borderWidth: 1,
+  },
+  subCategoryNumber: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#2980b9',
+  },
+  subCategoryTitle: {
+    fontSize: 12,
+    color: '#34495e',
+  },
+  subCategoryRow: {
+    justifyContent: 'space-between',
   },
   subCategoriesTitle: {
     fontSize: 20,

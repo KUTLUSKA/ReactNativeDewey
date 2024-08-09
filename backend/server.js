@@ -129,37 +129,50 @@ app.get('/api/dewey/details', (req, res) => {
     }
   );
 });
-//1. alt kategoriler
-app.get('/api/subcategories', (req, res) => {
-  const { mainCategory } = req.query;
+// Subcategories Endpoint
+app.get('/api/subcategories/:mainCategory', (req, res) => {
+  const { mainCategory } = req.params;
   
   console.log("Requested main category:", mainCategory);
 
-  if (!mainCategory) {
-    return res.status(400).json({ message: 'Ana kategori gerekli' });
+  if (!mainCategory || mainCategory === 'undefined' || isNaN(mainCategory)) {
+    return res.status(400).json({ message: 'Geçerli bir ana kategori gerekli' });
   }
 
-  const nextMainCategory = String(Number(mainCategory) + 100).padStart(3, '0');
-
-  const query = `
-    SELECT dewey_no, konu_adi 
-    FROM deweys 
-    WHERE dewey_no >= ? AND dewey_no < ? 
-    AND dewey_no % 10 = 0 
-    AND g1 IS NULL AND g2 IS NULL AND g3 IS NULL AND g4 IS NULL 
-    AND g5 IS NULL AND g6 IS NULL AND g7 IS NULL AND g8 IS NULL
-    ORDER BY dewey_no
-  `;
+  let query;
+  let queryParams;
+//900 lere bir
+  if (mainCategory === '900') {
+    query = `
+      SELECT real_dewey_no, konu_adi 
+      FROM deweys 
+      WHERE real_dewey_no >= '900' AND real_dewey_no < '1000'
+      ORDER BY real_dewey_no
+    `;
+    queryParams = [];
+  } else {
+    const nextMainCategory = String(Number(mainCategory) + 100).padStart(3, '0');
+    query = `
+      SELECT real_dewey_no, konu_adi 
+      FROM deweys 
+      WHERE real_dewey_no >= ? AND real_dewey_no < ? 
+      AND LENGTH(real_dewey_no) = 3
+      AND real_dewey_no % 10 = 0 
+      ORDER BY real_dewey_no
+    `;
+    queryParams = [mainCategory, nextMainCategory];
+  }
 
   console.log("Executing query:", query);
-  console.log("Query parameters:", [mainCategory, nextMainCategory]);
+  console.log("Query parameters:", queryParams);
 
-  db.query(query, [mainCategory, nextMainCategory], (err, results) => {
+  db.query(query, queryParams, (err, results) => {
     if (err) {
       console.error('Veritabanı hatası:', err);
       return res.status(500).json({ message: 'Alt kategoriler alınırken hata oluştu.' });
     }
     console.log("Query results:", results);
+    console.log("Number of results:", results.length);
     res.json(results);
   });
 });

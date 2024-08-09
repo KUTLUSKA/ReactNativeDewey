@@ -4,67 +4,77 @@ const cors = require('cors');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// CORS ve Body-Parser Middleware
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
 // MySQL Veritabanı Bağlantısı
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'kutluhan@7',
-  database: 'deweyDB'
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'kutluhan@7',
+  database: process.env.DB_NAME || 'deweyDB'
 });
 
 // Veritabanı bağlantısını kontrol et
 db.connect((err) => {
   if (err) {
     console.error('Veritabanına bağlanırken hata oluştu:', err);
-    return;
+    process.exit(1);
   }
   console.log('Veritabanına başarıyla bağlandı');
 });
 
-// .env dosyasında saklanacak gizli anahtar
-const secretKey = process.env.SECRET_KEY || 'your_secret_key';
+// JWT gizli anahtarı
+const secretKey = process.env.SECRET_KEY || 'Verinova@7';
+
+// Yardımcı fonksiyonlar
+const handleDatabaseError = (res, err, message) => {
+  console.error('Veritabanı hatası:', err);
+  res.status(500).json({ message });
+};
 
 // Register Endpoint
-app.post('/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
-
-  db.query(
-    'INSERT INTO users (username, password) VALUES (?, ?)',
-    [username, password],
-    (err, results) => {
-      if (err) {
-        console.error('Veritabanı hatası:', err);
-        return res.status(500).json({ message: 'Kullanıcı eklenirken hata oluştu.' });
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.query(
+      'INSERT INTO users (username, password) VALUES (?, ?)',
+      [username, hashedPassword],
+      (err) => {
+        if (err) return handleDatabaseError(res, err, 'Kullanıcı eklenirken hata oluştu.');
+        const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
+        res.status(201).json({ message: 'Kullanıcı başarıyla kaydedildi.', token });
       }
-      res.status(201).json({ message: 'Kullanıcı başarıyla kaydedildi.' });
-    }
-  );
+    );
+  } catch (error) {
+    res.status(500).json({ message: 'Şifre hashleme hatası' });
+  }
 });
 
 // Login Endpoint
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-
   db.query(
-    'SELECT * FROM users WHERE username = ? AND password = ?',
-    [username, password],
-    (err, results) => {
-      if (err) {
-        console.error('Veritabanı hatası:', err);
-        return res.status(500).json({ message: 'Giriş sırasında hata oluştu.' });
-      }
+    'SELECT * FROM users WHERE username = ?',
+    [username],
+    async (err, results) => {
+      if (err) return handleDatabaseError(res, err, 'Giriş sırasında hata oluştu.');
       if (results.length > 0) {
-        // Token oluştur
-        const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
-        res.json({ token }); // Token'ı istemciye gönder
+        const user = results[0];
+        const match = await bcrypt.compare(password, user.password);
+        if (match) {
+          const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
+          res.json({ token });
+        } else {
+          res.status(401).json({ message: 'Kullanıcı adı veya şifre yanlış.' });
+        }
       } else {
         res.status(401).json({ message: 'Kullanıcı adı veya şifre yanlış.' });
       }
@@ -72,34 +82,99 @@ app.post('/api/login', (req, res) => {
   );
 });
 
-// Token doğrulama middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// Search Endpoint
+app.get('/api/search', (req, res) => {
+  const { query } = req.query;
+  if (!query) return res.status(400).json({ message: 'Arama sorgusu gerekli' });
 
-  if (token == null) return res.status(401).json({ message: 'Token gerekli' });
+  const searchQuery = `%${query}%`;
+  db.query(
+    'SELECT dewey_no, g1, g2, g3, g4, g5, g6, g7, g8, konu_adi, aciklama FROM deweys WHERE konu_adi LIKE ?',
+    [searchQuery],
+    (err, results) => {
+      if (err) return handleDatabaseError(res, err, 'Arama sırasında hata oluştu.');
 
-  jwt.verify(token, secretKey, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Geçersiz token' });
-    req.user = user;
-    next();
-  });
-};
+      const processedResults = results.map(result => {
+        const gValues = [result.g1, result.g2, result.g3, result.g4, result.g5, result.g6, result.g7, result.g8];
+        const longestGValue = gValues.reduce((a, b) => (a && a.length > (b ? b.length : 0) ? a : b), null);
+        const fullDeweyNo = longestGValue ? `${result.dewey_no}${longestGValue}` : result.dewey_no;
 
-// Dinamik Dewey Verilerini Alma Endpoint'i
-app.get('/api/category/:category', (req, res) => {
-  const category = req.params.category;
-  const query = 'SELECT * FROM tables WHERE konu_no = ?';
+        return {
+          dewey_no: fullDeweyNo,
+          konu_adi: result.konu_adi,
+          aciklama: result.aciklama
+        };
+      });
 
-  db.query(query, [category], (err, results) => {
+      res.json(processedResults);
+    }
+  );
+});
+
+// Dewey Details Endpoint
+app.get('/api/dewey/details', (req, res) => {
+  const { dewey_no } = req.query;
+  if (!dewey_no) return res.status(400).json({ message: 'Dewey numarası gerekli' });
+
+  db.query(
+    'SELECT dewey_no, konu_adi, aciklama FROM deweys WHERE dewey_no = ?',
+    [dewey_no],
+    (err, results) => {
+      if (err) return handleDatabaseError(res, err, 'Dewey detayları alınırken hata oluştu.');
+      if (results.length > 0) {
+        res.json(results[0]);
+      } else {
+        res.status(404).json({ message: 'Dewey numarası bulunamadı.' });
+      }
+    }
+  );
+});
+//1. alt kategoriler
+app.get('/api/subcategories', (req, res) => {
+  const { mainCategory } = req.query;
+  
+  console.log("Requested main category:", mainCategory);
+
+  if (!mainCategory) {
+    return res.status(400).json({ message: 'Ana kategori gerekli' });
+  }
+
+  const nextMainCategory = String(Number(mainCategory) + 100).padStart(3, '0');
+
+  const query = `
+    SELECT dewey_no, konu_adi 
+    FROM deweys 
+    WHERE dewey_no >= ? AND dewey_no < ? 
+    AND dewey_no % 10 = 0 
+    AND g1 IS NULL AND g2 IS NULL AND g3 IS NULL AND g4 IS NULL 
+    AND g5 IS NULL AND g6 IS NULL AND g7 IS NULL AND g8 IS NULL
+    ORDER BY dewey_no
+  `;
+
+  console.log("Executing query:", query);
+  console.log("Query parameters:", [mainCategory, nextMainCategory]);
+
+  db.query(query, [mainCategory, nextMainCategory], (err, results) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      console.error('Veritabanı hatası:', err);
+      return res.status(500).json({ message: 'Alt kategoriler alınırken hata oluştu.' });
     }
-    if (results.length > 0) {
-      res.json(results[0]);
-    } else {
-      res.status(404).json({ message: 'Kategori bulunamadı' });
+    console.log("Query results:", results);
+    res.json(results);
+  });
+});
+// Main Dewey Numbers Endpoint
+app.get('/api/main-dewey-numbers', (req, res) => {
+  const mainDeweyIds = [1, 629, 1251, 2710, 7476, 7874, 10984, 17072, 19524, 19913]; // Ana Dewey numaralarının ID'leri
+
+  const query = 'SELECT id, dewey_no, konu_adi FROM deweys WHERE id IN (?) ORDER BY dewey_no';
+
+  db.query(query, [mainDeweyIds], (err, results) => {
+    if (err) {
+      console.error('Veritabanı hatası:', err);
+      return res.status(500).json({ message: 'Ana Dewey numaraları alınırken hata oluştu.' });
     }
+    res.json(results);
   });
 });
 

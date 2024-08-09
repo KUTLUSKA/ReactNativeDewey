@@ -1,137 +1,119 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { SearchBar } from 'react-native-elements';
-import Collapsible from 'react-native-collapsible';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const HomeScreen = ({ navigation }) => {
-  const deweyCategories = ['000 Genel Konular', '100 Felsefe ve Psikoloji', '200 Din', '300 Toplum Bilimleri', '400 Dil ve Dil Bilim', '500 Doğa Bilimleri ve Matematik', '600 Teknoloji (Uygulamalı Bilimler)', '700 Sanat (Güzel Sanatlar)', '800 Edebiyat ve Retorik', '900 Coğrafya ve tarih'];
-  const tCategories = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
-  const [search, setSearch] = useState('');
-  const [collapsedDewey, setCollapsedDewey] = useState(true);
-  const [collapsedT, setCollapsedT] = useState(true);
-  const [filteredDeweyCategories, setFilteredDeweyCategories] = useState(deweyCategories);
-  const [filteredTCategories, setFilteredTCategories] = useState(tCategories);
-  const [loading, setLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryInfo, setCategoryInfo] = useState('');
-
-  const updateSearch = (search) => {
-    setSearch(search);
-    if (search) {
-      const filteredDewey = deweyCategories.filter(category =>
-        category.includes(search)
-      );
-      setFilteredDeweyCategories(filteredDewey);
-      const filteredT = tCategories.filter(category =>
-        category.includes(search)
-      );
-      setFilteredTCategories(filteredT);
-    } else {
-      setFilteredDeweyCategories(deweyCategories);
-      setFilteredTCategories(tCategories);
-    }
-  };
-
-  const handleCategoryPress = async (category) => {
-    setLoading(true);
-    setSelectedCategory(category);
-
-    try {
-      const response = await fetch(`http://localhost:3000/api/category/${category}`);
-      const data = await response.json();
-      if (response.ok) {
-        setCategoryInfo(data.konu_adi);
-      } else {
-        Alert.alert('Hata', data.message || 'Kategori bulunamadı');
-      }
-    } catch (error) {
-      Alert.alert('Hata', 'Bir hata oluştu');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [expandedItems, setExpandedItems] = useState({});
 
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem('userToken');
-      navigation.navigate('Login'); // Giriş ekranına yönlendir
+      navigation.navigate('Login');
     } catch (error) {
       Alert.alert('Hata', 'Çıkış sırasında bir hata oluştu');
     }
   };
 
+  const handleSearch = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/search?query=${searchQuery}`);
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      console.log('Sunucudan gelen veri:', data); // Bu satırı ekleyin
+      setSearchResults(data);
+      setExpandedItems({});
+    } catch (error) {
+      console.error('Arama hatası:', error);
+      Alert.alert('Hata', 'Arama sırasında bir hata oluştu');
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.length > 2) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const toggleItem = (index) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedItems(prev => ({...prev, [index]: !prev[index]}));
+  };
+
+  const renderSearchResults = () => {
+    return searchResults.map((result, index) => (
+      <View key={index} style={styles.resultItem}>
+        <TouchableOpacity onPress={() => toggleItem(index)}>
+          <View style={styles.resultTitleContainer}>
+            <Text style={styles.resultDeweyNo}>{result.dewey_no || 'No yok'}</Text>
+            <Text style={styles.resultTitle}>{result.konu_adi || 'Başlık yok'}</Text>
+          </View>
+        </TouchableOpacity>
+        {expandedItems[index] && (
+          <Text style={styles.resultDescription}>
+            {result.aciklama ? result.aciklama : 'Açıklama bulunamadı'}
+          </Text>
+        )}
+      </View>
+    ));
+  };
+  
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Image
         source={require('../img/verinova-JPG-300x122.jpg')}
         style={styles.icon}
       />
+      
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={styles.navigationButton} 
+          onPress={() => navigation.navigate('DeweyNumbers')}
+        >
+          <Text style={styles.navigationButtonText}>Dewey Sayıları</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navigationButton} 
+          onPress={() => navigation.navigate('TNumbers')}
+        >
+          <Text style={styles.navigationButtonText}>T Sayıları</Text>
+        </TouchableOpacity>
+      </View>
+      
       <View style={styles.searchContainer}>
-        <SearchBar
-          placeholder="Search..."
-          onChangeText={updateSearch}
-          value={search}
-          containerStyle={styles.searchBarContainer}
-          inputContainerStyle={styles.searchBarInput}
-          inputStyle={styles.searchBarInputText}
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Konu ara..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
       </View>
-      <View style={styles.contentContainer}>
-        <View style={styles.leftColumn}>
-          <TouchableOpacity
-            style={styles.accordionHeader}
-            onPress={() => setCollapsedDewey(!collapsedDewey)}
-          >
-            <Text style={styles.accordionTitle}>Dewey Decimal Kategorileri</Text>
-          </TouchableOpacity>
-          <Collapsible collapsed={collapsedDewey}>
-            {filteredDeweyCategories.map((category, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.accordionItem}
-                onPress={() => handleCategoryPress(category)}
-              >
-                <Text>{category}</Text>
-              </TouchableOpacity>
-            ))}
-          </Collapsible>
-        </View>
 
-        <View style={styles.rightColumn}>
-          <TouchableOpacity
-            style={styles.accordionHeader}
-            onPress={() => setCollapsedT(!collapsedT)}
-          >
-            <Text style={styles.accordionTitle}>T Kategorileri</Text>
-          </TouchableOpacity>
-          <Collapsible collapsed={collapsedT}>
-            {filteredTCategories.map((category, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.accordionItem}
-                onPress={() => handleCategoryPress(category)}
-              >
-                <Text>{category}</Text>
-              </TouchableOpacity>
-            ))}
-          </Collapsible>
+      {searchResults.length > 0 ? (
+        <View style={styles.resultsContainer}>
+          {renderSearchResults()}
         </View>
-      </View>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
-      ) : (
-        selectedCategory && (
-          <View style={styles.categoryInfoContainer}>
-            <Text style={styles.categoryInfoText}>{categoryInfo}</Text>
-          </View>
-        )
-      )}
+      ) : searchQuery.length > 2 ? (
+        <Text style={styles.noResultText}>Sonuç bulunamadı</Text>
+      ) : null}
+
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -140,90 +122,134 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  searchContainer: {
-    marginVertical: 20,
-    width: '80%',
-    alignSelf: 'center',
-  },
-  searchBarContainer: {
-    backgroundColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderTopColor: 'transparent',
-  },
-  searchBarInput: {
-    backgroundColor: '#e9e9e9',
-    borderRadius: 20,
-  },
-  searchBarInputText: {
-    fontSize: 14,
-  },
+
   icon: {
-    width: 300,
-    height: 122,
+    width: 200,
+    height: 81,
     resizeMode: 'contain',
     alignSelf: 'center',
-    marginBottom: 20,
-  },
-  contentContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    marginHorizontal: 10,
-  },
-  leftColumn: {
-    flex: 1,
-    padding: 10,
-    borderRightWidth: 1,
-    borderRightColor: '#ccc',
-  },
-  rightColumn: {
-    flex: 1,
-    padding: 10,
-  },
-  accordionHeader: {
-    padding: 10,
-    backgroundColor: '#f1f1f1',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  accordionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  accordionItem: {
-    fontSize: 16,
     marginVertical: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 5,
   },
-  loader: {
-    marginTop: 20,
-  },
-  categoryInfoContainer: {
+  searchContainer: {
     padding: 10,
-    backgroundColor: '#f1f1f1',
-    borderRadius: 5,
-    margin: 10,
+    width: '100%',
+    alignItems: 'center',
   },
-  categoryInfoText: {
+  searchInput: {
+    width: '80%',
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingLeft: 15,
+    paddingRight: 15,
+  },
+  libraryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    padding: 5,
+  },
+  resultItem: {
+    backgroundColor: '#f9f9f9',
+    marginBottom: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    marginVertical: 10,
+  },
+  navigationButton: {
+    backgroundColor: '#4CAF50',
+    padding: 10,
+    borderRadius: 5,
+    width: '40%',
+    alignItems: 'center',
+  },
+  navigationButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  resultTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e9e9e9',
+    padding: 10,
+  },
+  resultDeweyNo: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginRight: 10,
+    color: '#4CAF50',
+  },
+  resultTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  resultDescription: {
+    padding: 10,
+    fontSize: 14,
+  },
+  resultDescription: {
+    padding: 10,
+    fontSize: 14,
+  },
+  library: {
+    backgroundColor: '#f0f0f0',
+    padding: 5,
+    margin: 3,
+    borderRadius: 5,
+    width: '3%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.20,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  libraryText: {
+    color: '#333',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   logoutButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: 10,
+    right: 10,
     backgroundColor: '#ff6f61',
-    padding: 10,
-    borderRadius: 20,
+    padding: 8,
+    borderRadius: 15,
     alignItems: 'center',
-    width: 120,
+    width: 100,
   },
   logoutButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
+  },
+  resultsContainer: {
+    padding: 10,
+  },
+  resultItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  noResultText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

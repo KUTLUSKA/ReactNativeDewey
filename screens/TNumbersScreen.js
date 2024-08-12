@@ -1,4 +1,5 @@
 import React from 'react';
+import config from './config';
 import { View, Text, StyleSheet } from 'react-native';
 
 const TNumbersScreen = () => {

@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import config from './config';
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
+    if (!username || !password) {
+      Alert.alert('Hata', 'Kullanıcı adı ve şifre boş olamaz.');
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const response = await fetch('http://localhost:3000/api/register', {
+      console.log('Registering with URL:', `${config.API_URL}/api/register`);
+      const response = await fetch(`${config.API_URL}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -15,14 +25,27 @@ const RegisterScreen = ({ navigation }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      const result = await response.text();
-      Alert.alert('Sonuç', result);
-      
+      const result = await response.json();
+      console.log('Server response:', result);
+
       if (response.ok) {
-        navigation.navigate('Login'); // Kayıt başarılıysa login sayfasına dön
+        Alert.alert(
+          'Başarılı', 
+          'Kayıt işlemi başarıyla tamamlandı. Giriş yapabilirsiniz.',
+          [{ text: 'Tamam', onPress: () => navigation.navigate('Login') }]
+        );
+      } else {
+        if (response.status === 409) {
+          Alert.alert('Hata', 'Bu kullanıcı adı zaten kullanılıyor. Lütfen başka bir kullanıcı adı seçin.');
+        } else {
+          Alert.alert('Hata', result.message || 'Kayıt işlemi başarısız oldu.');
+        }
       }
     } catch (error) {
+      console.error('Registration error:', error);
       Alert.alert('Hata', 'Bir hata oluştu: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,8 +67,12 @@ const RegisterScreen = ({ navigation }) => {
           onChangeText={setPassword}
           secureTextEntry
         />
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Üye Ol</Text>
+        <TouchableOpacity 
+          style={[styles.button, isLoading && styles.disabledButton]} 
+          onPress={handleRegister}
+          disabled={isLoading}
+        >
+          <Text style={styles.buttonText}>{isLoading ? 'Kaydediliyor...' : 'Üye Ol'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -70,7 +97,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    marginLeft: '50%', // ekranın sağ tarafında olması için
+    marginLeft: '50%', 
   },
   title: {
     fontSize: 24,

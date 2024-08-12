@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView, ActivityIndicator } from 'react-native';
+import config from './config';
 
-const API_URL = 'http://localhost:3000'; // Replace with your actual API URL
-
-const DeweyNumbersScreen = () => {
+const DeweyNumbersScreen = ({ navigation }) => {
   const [mainDeweyNumbers, setMainDeweyNumbers] = useState([]);
   const [selectedDewey, setSelectedDewey] = useState(null);
   const [subCategories, setSubCategories] = useState([]);
@@ -17,7 +16,7 @@ const DeweyNumbersScreen = () => {
   const fetchMainDeweyNumbers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/main-dewey-numbers`);
+      const response = await fetch(`${config.API_URL}/api/main-dewey-numbers`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setMainDeweyNumbers(data);
@@ -31,7 +30,7 @@ const DeweyNumbersScreen = () => {
   const fetchDeweyDetails = async (dewey_no) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/dewey/details?dewey_no=${dewey_no}`);
+      const response = await fetch(`${config.API_URL}/api/dewey/details?dewey_no=${dewey_no}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setSelectedDewey(data);
@@ -47,7 +46,7 @@ const DeweyNumbersScreen = () => {
   const fetchSubCategories = async (deweyNo) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/subcategories/${deweyNo}`);
+      const response = await fetch(`${config.API_URL}/api/subcategories/${deweyNo}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setSubCategories(data);
@@ -59,18 +58,14 @@ const DeweyNumbersScreen = () => {
     }
   };
 
-  const handleSubCategoryPress = async (subCategory) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/dewey/details?dewey_no=${subCategory.real_dewey_no}`);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const data = await response.json();
-      setSelectedSubCategory(data);
-    } catch (error) {
-      console.error('Alt kategori detayları alınırken hata:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubCategoryPress = (subCategory) => {
+    console.log('Navigating to DeweyLevel1 with:', subCategory);
+    navigation.navigate('DeweyLevel1', { 
+      mainCategory: {
+        dewey_no: subCategory.real_dewey_no.substring(0, 3), // İlk 3 karakteri al
+        konu_adi: subCategory.konu_adi
+      }
+    });
   };
 
   const renderDeweyItem = ({ item }) => (

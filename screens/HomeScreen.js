@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import config from './config';
+
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -22,7 +24,7 @@ const HomeScreen = ({ navigation }) => {
 
   const handleSearch = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/search?query=${searchQuery}`);
+      const response = await fetch(`${config.API_URL}/api/search?query=${searchQuery}`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }

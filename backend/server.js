@@ -5,7 +5,6 @@ const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -21,7 +20,7 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME || 'deweyDB'
 });
 
-// Veritabanı bağlantısını kontrol et
+// Veritabanı Log
 db.connect((err) => {
   if (err) {
     console.error('Veritabanına bağlanırken hata oluştu:', err);
@@ -30,7 +29,7 @@ db.connect((err) => {
   console.log('Veritabanına başarıyla bağlandı');
 });
 
-// JWT gizli anahtarı
+// JWT gizli anahtarı (gizlenecek!!)
 const secretKey = process.env.SECRET_KEY || 'Verinova@7';
 
 // Yardımcı fonksiyonlar
@@ -42,18 +41,40 @@ const handleDatabaseError = (res, err, message) => {
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Kullanıcı adı ve şifre gereklidir.' });
+  }
+
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    db.query(
-      'INSERT INTO users (username, password) VALUES (?, ?)',
-      [username, hashedPassword],
-      (err) => {
-        if (err) return handleDatabaseError(res, err, 'Kullanıcı eklenirken hata oluştu.');
-        const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
-        res.status(201).json({ message: 'Kullanıcı başarıyla kaydedildi.', token });
+    // Önce kullanıcı adının var olup olmadığını kontrol et
+    db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Veritabanı hatası oluştu.' });
       }
-    );
+
+      if (results.length > 0) {
+        return res.status(409).json({ message: 'Bu kullanıcı adı zaten kullanılıyor.' });
+      }
+
+      // Kullanıcı adı benzersiz, yeni kullanıcıyı ekle
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.query(
+        'INSERT INTO users (username, password) VALUES (?, ?)',
+        [username, hashedPassword],
+        (insertErr) => {
+          if (insertErr) {
+            console.error('User insertion error:', insertErr);
+            return res.status(500).json({ message: 'Kullanıcı eklenirken hata oluştu.' });
+          }
+          const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
+          res.status(201).json({ message: 'Kullanıcı başarıyla kaydedildi.', token });
+        }
+      );
+    });
   } catch (error) {
+    console.error('Password hashing error:', error);
     res.status(500).json({ message: 'Şifre hashleme hatası' });
   }
 });
@@ -129,7 +150,8 @@ app.get('/api/dewey/details', (req, res) => {
     }
   );
 });
-// Subcategories Endpoint
+
+// Master_Subcategories Endpoint
 app.get('/api/subcategories/:mainCategory', (req, res) => {
   const { mainCategory } = req.params;
   
@@ -176,6 +198,64 @@ app.get('/api/subcategories/:mainCategory', (req, res) => {
     res.json(results);
   });
 });
+// Level1 subcategories
+app.get('/api/dewey-level1/:dewey_no', (req, res) => {
+  const { dewey_no } = req.params;
+  
+  console.log('Requested Dewey number:', dewey_no);
+
+  if (!dewey_no || dewey_no === 'undefined' || dewey_no.length !== 3) {
+    console.log('Invalid Dewey number:', dewey_no);
+    return res.status(400).json({ error: 'Geçerli bir 3 haneli Dewey numarası gerekli' });
+  }
+
+  const currentCategory = parseInt(dewey_no);
+  const nextCategory = currentCategory + 10;
+
+  console.log('Current category:', currentCategory);
+  console.log('Next category:', nextCategory);
+
+  let query;
+  let queryParams;
+
+  if (currentCategory === 990) {
+    // 990'lar için özel durum
+    query = `
+      SELECT real_dewey_no, konu_adi, aciklama
+      FROM deweys
+      WHERE real_dewey_no >= ? AND real_dewey_no < 1000
+      ORDER BY real_dewey_no
+    `;
+    queryParams = [dewey_no];
+  } else {
+    query = `
+      SELECT real_dewey_no, konu_adi, aciklama
+      FROM deweys
+      WHERE real_dewey_no >= ? AND real_dewey_no < ?
+      ORDER BY real_dewey_no
+    `;
+    queryParams = [dewey_no, nextCategory.toString()];
+  }
+
+  console.log('Executing query:', query);
+  console.log('Query params:', queryParams);
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error occurred' });
+    }
+    //log check
+    //console.log('Query results:', results); 
+
+    if (results.length === 0) {
+      console.log('No subcategories found');
+      return res.status(404).json({ message: 'No subcategories found' });
+    }
+
+    res.json(results);
+  });
+});
 // Main Dewey Numbers Endpoint
 app.get('/api/main-dewey-numbers', (req, res) => {
   const mainDeweyIds = [1, 629, 1251, 2710, 7476, 7874, 10984, 17072, 19524, 19913]; // Ana Dewey numaralarının ID'leri
@@ -194,4 +274,5 @@ app.get('/api/main-dewey-numbers', (req, res) => {
 // Sunucuyu başlat
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  console.log(`im in ${port}`);
 });

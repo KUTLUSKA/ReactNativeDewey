@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'; // useState ve useEffect içe aktarıldı
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import config from './config'; // config dosyasını import ediyoruz
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -29,7 +29,7 @@ const LoginScreen = ({ navigation }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
+      const response = await fetch(`${config.API_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ const LoginScreen = ({ navigation }) => {
       const data = await response.json();
 
       if (response.ok) {
-        await AsyncStorage.setItem('userToken', 'your-token-here');
+        await AsyncStorage.setItem('userToken', data.token); // Sunucudan gelen gerçek token'ı kullanıyoruz
         Alert.alert('Başarılı', data.message);
         navigation.navigate('Home');
       } else {
@@ -48,7 +48,7 @@ const LoginScreen = ({ navigation }) => {
       }
     } catch (error) {
       Alert.alert('Hata', 'Bir hata oluştu.');
-      console.error(error);
+      console.error('Login error:', error);
     }
   };
 

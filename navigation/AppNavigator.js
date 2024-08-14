@@ -10,6 +10,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import DeweyNumbersScreen from '../screens/DeweyNumbersScreen';
 import TNumbersScreen from '../screens/TNumbersScreen';
 import DeweyLevel1Screen from '../screens/DeweyLevel1Screen';
+import DeweyLevel2Screen from '../screens/DeweyLevel2Screen';
 
 const Stack = createStackNavigator();
 
@@ -81,6 +82,15 @@ const AppNavigator = () => {
             title: route.params?.mainCategory?.konu_adi 
               ? `${route.params.mainCategory.konu_adi} - Alt Kategoriler`
               : 'Dewey Alt Kategoriler'
+          })}
+        />
+        <Stack.Screen 
+          name="DeweyLevel2" 
+          component={DeweyLevel2Screen} 
+          options={({ route }) => ({ 
+            title: route.params?.level2Category?.konu_adi 
+              ? `${route.params.level2Category.konu_adi} - Alt Kategoriler`
+              : 'Dewey Seviye 2 Alt Kategoriler'
           })}
         />
       </Stack.Navigator>

@@ -6,7 +6,9 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
   const { mainCategory } = route.params;
   const [subCategories, setSubCategories] = useState([]);
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
+  const [level2SubCategories, setLevel2SubCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingLevel2, setIsLoadingLevel2] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -29,8 +31,52 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
     }
   };
 
+  const fetchLevel2SubCategories = async (deweyNo) => {
+    setIsLoadingLevel2(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/dewey-level2/${deweyNo}`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      
+      // Alt kategorileri kontrol et ve işaretle
+      const markedData = await Promise.all(data.map(async (category) => {
+        const hasSubcategories = await checkForSubcategories(category.real_dewey_no);
+        return { ...category, hasSubcategories };
+      }));
+      
+      setLevel2SubCategories(markedData);
+    } catch (error) {
+      console.error('Level 2 alt kategoriler alınırken hata:', error);
+      setLevel2SubCategories([]);
+    } finally {
+      setIsLoadingLevel2(false);
+    }
+  };
+
+  const checkForSubcategories = async (deweyNo) => {
+    try {
+      const response = await fetch(`${config.API_URL}/api/dewey-level3/${deweyNo}`);
+      if (response.status === 200) {
+        const data = await response.json();
+        return data.length > 0;
+      }
+      return false;
+    } catch (error) {
+      console.error('Alt kategori kontrolü sırasında hata:', error);
+      return false;
+    }
+  };
+
   const handleSubCategoryPress = (subCategory) => {
     setSelectedSubCategory(subCategory);
+    fetchLevel2SubCategories(subCategory.real_dewey_no);
+  };
+
+  const handleLevel2Press = (level2Category) => {
+    navigation.navigate('DeweyLevel2', { 
+      level1Category: selectedSubCategory,
+      level2Category: level2Category
+    });
   };
 
   const renderSubCategoryItem = ({ item }) => (
@@ -43,6 +89,19 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
     >
       <Text style={styles.subCategoryNumber}>{item.real_dewey_no}</Text>
       <Text style={styles.subCategoryTitle}>{item.konu_adi}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderLevel2SubCategoryItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.level2Item}
+      onPress={() => handleLevel2Press(item)}
+    >
+      <View style={styles.level2ItemContent}>
+        <Text style={styles.level2Number}>{item.real_dewey_no}</Text>
+        {item.hasSubcategories && <Text style={styles.subcategoryIndicator}>{'>>'}</Text>}
+      </View>
+      <Text style={styles.level2Title}>{item.konu_adi}</Text>
     </TouchableOpacity>
   );
 
@@ -88,6 +147,19 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
               <Text style={styles.selectedDescription}>
                 {selectedSubCategory.aciklama || 'Açıklama bulunamadı.'}
               </Text>
+              <Text style={styles.level2Title}>Alt Kategoriler:</Text>
+              {isLoadingLevel2 ? (
+                <ActivityIndicator size="small" color="#3498db" />
+              ) : (
+                <FlatList
+                  data={level2SubCategories}
+                  renderItem={renderLevel2SubCategoryItem}
+                  keyExtractor={(item) => item.real_dewey_no}
+                  numColumns={2}
+                  columnWrapperStyle={styles.subCategoryRow}
+                  ListEmptyComponent={<Text style={styles.noLevel2Text}>Alt kategori bulunamadı.</Text>}
+                />
+              )}
             </View>
           ) : (
             <Text style={styles.noSelectionText}>Lütfen sol taraftan bir alt kategori seçin.</Text>
@@ -97,6 +169,7 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -128,20 +201,20 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
   },
-  subCategoryItem: {
+  deweyItem: {
     padding: 15,
     backgroundColor: '#fff',
   },
-  selectedSubCategoryItem: {
+  selectedDeweyItem: {
     backgroundColor: '#e8f4fd',
   },
-  subCategoryNumber: {
+  deweyNumber: {
     fontWeight: 'bold',
     fontSize: 16,
     color: '#2980b9',
     marginBottom: 5,
   },
-  subCategoryTitle: {
+  deweyTitle: {
     fontSize: 14,
     color: '#34495e',
   },
@@ -167,15 +240,40 @@ const styles = StyleSheet.create({
     color: '#34495e',
     marginBottom: 20,
   },
+  subCategoriesTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#2c3e50',
+  },
+  subCategoryRow: {
+    justifyContent: 'space-between',
+  },
+  subCategoryItem: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
+    width: '47%',
+  },
+  subCategoryNumber: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#2980b9',
+  },
+  subCategoryTitle: {
+    fontSize: 12,
+    color: '#34495e',
+  },
+  noSubCategoriesText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    fontStyle: 'italic',
+  },
   noSelectionText: {
     fontSize: 18,
     color: '#7f8c8d',
     fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#e74c3c',
     textAlign: 'center',
   },
   centered: {
@@ -198,6 +296,33 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },level2ItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subcategoryIndicator: {
+    marginLeft: 5,
+    color: '#3498db',
+    fontWeight: 'bold',
+  },
+  level2Item: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
+    width: '47%',
+  },
+  level2Number: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#2980b9',
+  },
+  level2Title: {
+    fontSize: 12,
+    color: '#34495e',
+  },
+  subCategoryRow: {
+    justifyContent: 'space-between',
   },
 });
 

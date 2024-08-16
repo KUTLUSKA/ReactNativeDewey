@@ -11,6 +11,7 @@ import DeweyNumbersScreen from '../screens/DeweyNumbersScreen';
 import TNumbersScreen from '../screens/TNumbersScreen';
 import DeweyLevel1Screen from '../screens/DeweyLevel1Screen';
 import DeweyLevel2Screen from '../screens/DeweyLevel2Screen';
+import DeweyLevel3Screen from '../screens/DeweyLevel3Screen';
 
 const Stack = createStackNavigator();
 
@@ -86,11 +87,20 @@ const AppNavigator = () => {
         />
         <Stack.Screen 
           name="DeweyLevel2" 
-          component={DeweyLevel2Screen} 
-          options={({ route }) => ({ 
-            title: route.params?.level2Category?.konu_adi 
-              ? `${route.params.level2Category.konu_adi} - Alt Kategoriler`
+          component={DeweyLevel2Screen}
+          options={({ route }) => ({
+            title: route.params?.level1Category?.konu_adi
+              ? `${route.params.level1Category.konu_adi} - Alt Kategoriler`
               : 'Dewey Seviye 2 Alt Kategoriler'
+          })}
+        />
+        <Stack.Screen 
+          name="DeweyLevel3Screen" 
+          component={DeweyLevel3Screen}
+          options={({ route }) => ({
+            title: route.params?.level2Category?.konu_adi
+              ? `${route.params.level2Category.konu_adi} - Alt Kategoriler`
+              : 'Dewey Seviye 3 Alt Kategoriler'
           })}
         />
       </Stack.Navigator>

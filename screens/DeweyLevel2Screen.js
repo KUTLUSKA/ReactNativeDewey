@@ -58,6 +58,13 @@ const DeweyLevel2Screen = ({ route, navigation }) => {
     fetchLevel3Categories(category.real_dewey_no);
   };
 
+  const handleLevel3CategoryPress = (category) => {
+    navigation.navigate('DeweyLevel3Screen', {
+      level2Category: selectedLevel2Category,
+      level3Category: category
+    });
+  };
+
   const renderLevel2CategoryItem = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -66,16 +73,26 @@ const DeweyLevel2Screen = ({ route, navigation }) => {
       ]}
       onPress={() => handleLevel2CategoryPress(item)}
     >
-      <Text style={styles.categoryNumber}>{item.real_dewey_no}</Text>
-      <Text style={styles.categoryTitle}>{item.konu_adi}</Text>
+      <View style={styles.categoryItemContent}>
+        <View>
+          <Text style={styles.categoryNumber}>{item.real_dewey_no}</Text>
+          <Text style={styles.categoryTitle}>{item.konu_adi}</Text>
+        </View>
+        {item.hasSubcategories && (
+          <Text style={styles.subcategoryIndicator}>{'>>'}</Text>
+        )}
+      </View>
     </TouchableOpacity>
   );
 
   const renderLevel3CategoryItem = ({ item }) => (
-    <View style={styles.subCategoryItem}>
+    <TouchableOpacity
+      style={styles.subCategoryItem}
+      onPress={() => handleLevel3CategoryPress(item)}
+    >
       <Text style={styles.subCategoryNumber}>{item.real_dewey_no}</Text>
       <Text style={styles.subCategoryTitle}>{item.konu_adi}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   if (isLoadingLevel2) {
@@ -224,6 +241,11 @@ const styles = StyleSheet.create({
     margin: 5,
     borderRadius: 5,
     width: '47%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   subCategoryNumber: {
     fontWeight: 'bold',
@@ -263,6 +285,16 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  categoryItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subcategoryIndicator: {
+    fontSize: 18,
+    color: '#3498db',
     fontWeight: 'bold',
   },
 });

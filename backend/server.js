@@ -105,31 +105,60 @@ app.post('/api/login', (req, res) => {
 
 // Search Endpoint
 app.get('/api/search', (req, res) => {
-  const { query } = req.query;
+  const { query, type } = req.query;
   if (!query) return res.status(400).json({ message: 'Arama sorgusu gerekli' });
+  if (!type || (type !== 'konu_adi' && type !== 'aciklama')) {
+    return res.status(400).json({ message: 'Geçerli bir arama türü gerekli (konu_adi veya aciklama)' });
+  }
 
-  const searchQuery = `%${query}%`;
-  db.query(
-    'SELECT dewey_no, g1, g2, g3, g4, g5, g6, g7, g8, konu_adi, aciklama FROM deweys WHERE konu_adi LIKE ?',
-    [searchQuery],
-    (err, results) => {
-      if (err) return handleDatabaseError(res, err, 'Arama sırasında hata oluştu.');
+  const searchQuery = query.trim();
+  const sqlQuery = `
+    SELECT 
+      dewey_no, g1, g2, g3, g4, g5, g6, g7, g8, konu_adi, aciklama,
+      CASE
+        WHEN ${type} = ? THEN 1
+        WHEN ${type} LIKE ? THEN 2
+        WHEN ${type} LIKE ? THEN 3
+        WHEN ${type} LIKE ? THEN 4
+        ELSE 5
+      END AS relevance
+    FROM deweys 
+    WHERE 
+      ${type} = ? OR
+      ${type} LIKE ? OR
+      ${type} LIKE ? OR
+      ${type} LIKE ?
+    ORDER BY relevance, LENGTH(${type})
+  `;
 
-      const processedResults = results.map(result => {
-        const gValues = [result.g1, result.g2, result.g3, result.g4, result.g5, result.g6, result.g7, result.g8];
-        const longestGValue = gValues.reduce((a, b) => (a && a.length > (b ? b.length : 0) ? a : b), null);
-        const fullDeweyNo = longestGValue ? `${result.dewey_no}${longestGValue}` : result.dewey_no;
+  const params = [
+    searchQuery,
+    `% ${searchQuery} %`,
+    `${searchQuery}%`,
+    `%${searchQuery}`,
+    searchQuery,
+    `% ${searchQuery} %`,
+    `${searchQuery}%`,
+    `%${searchQuery}`
+  ];
 
-        return {
-          dewey_no: fullDeweyNo,
-          konu_adi: result.konu_adi,
-          aciklama: result.aciklama
-        };
-      });
+  db.query(sqlQuery, params, (err, results) => {
+    if (err) return handleDatabaseError(res, err, 'Arama sırasında hata oluştu.');
 
-      res.json(processedResults);
-    }
-  );
+    const processedResults = results.map(result => {
+      const gValues = [result.g1, result.g2, result.g3, result.g4, result.g5, result.g6, result.g7, result.g8];
+      const longestGValue = gValues.reduce((a, b) => (a && a.length > (b ? b.length : 0) ? a : b), null);
+      const fullDeweyNo = longestGValue ? `${result.dewey_no}${longestGValue}` : result.dewey_no;
+
+      return {
+        dewey_no: fullDeweyNo,
+        konu_adi: result.konu_adi,
+        aciklama: result.aciklama
+      };
+    });
+
+    res.json(processedResults);
+  });
 });
 
 // Dewey Details Endpoint
@@ -337,6 +366,47 @@ app.get('/api/dewey-level3/:dewey_no', (req, res) => {
     if (results.length === 0) {
       console.log('No level 3 subcategories found');
       return res.status(404).json({ message: 'No level 3 subcategories found' });
+    }
+
+    res.json(results);
+  });
+});
+// Level 4 subcategories
+app.get('/api/dewey-level4/:dewey_no', (req, res) => {
+  const { dewey_no } = req.params;
+  
+  console.log('Requested Dewey number for level 4:', dewey_no);
+
+  if (!dewey_no || dewey_no === 'undefined') {
+    console.log('Invalid Dewey number:', dewey_no);
+    return res.status(400).json({ error: 'Geçerli bir Dewey numarası gerekli' });
+  }
+
+  const query = `
+    SELECT real_dewey_no, konu_adi, aciklama
+    FROM deweys
+    WHERE real_dewey_no LIKE CONCAT(?, '%')
+      AND real_dewey_no != ?
+      AND LENGTH(REPLACE(real_dewey_no, '.', '')) > LENGTH(REPLACE(?, '.', ''))
+    ORDER BY real_dewey_no
+  `;
+
+  const queryParams = [dewey_no, dewey_no, dewey_no];
+
+  console.log('Executing query:', query);
+  console.log('Query params:', queryParams);
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error occurred', details: err.message });
+    }
+
+    console.log('Query results:', results);
+
+    if (results.length === 0) {
+      console.log('No level 4 subcategories found');
+      return res.status(404).json({ message: 'No level 4 subcategories found' });
     }
 
     res.json(results);

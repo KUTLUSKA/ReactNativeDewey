@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, FlatList, Dimensions,  } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from './config';
 
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+const { height } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [searchType, setSearchType] = useState('konu_adi');
   const [expandedItems, setExpandedItems] = useState({});
 
   const handleLogout = async () => {
@@ -24,12 +22,12 @@ const HomeScreen = ({ navigation }) => {
 
   const handleSearch = async () => {
     try {
-      const response = await fetch(`${config.API_URL}/api/search?query=${searchQuery}`);
+      const response = await fetch(`${config.API_URL}/api/search?query=${searchQuery}&type=${searchType}`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
-      console.log('Sunucudan gelen veri:', data); // Bu satırı ekleyin
+      console.log('Sunucudan gelen veri:', data);
       setSearchResults(data);
       setExpandedItems({});
     } catch (error) {
@@ -48,69 +46,82 @@ const HomeScreen = ({ navigation }) => {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+  }, [searchQuery, searchType]);
 
   const toggleItem = (index) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedItems(prev => ({...prev, [index]: !prev[index]}));
   };
 
-  const renderSearchResults = () => {
-    return searchResults.map((result, index) => (
-      <View key={index} style={styles.resultItem}>
-        <TouchableOpacity onPress={() => toggleItem(index)}>
-          <View style={styles.resultTitleContainer}>
-            <Text style={styles.resultDeweyNo}>{result.dewey_no || 'No yok'}</Text>
-            <Text style={styles.resultTitle}>{result.konu_adi || 'Başlık yok'}</Text>
-          </View>
-        </TouchableOpacity>
-        {expandedItems[index] && (
-          <Text style={styles.resultDescription}>
-            {result.aciklama ? result.aciklama : 'Açıklama bulunamadı'}
-          </Text>
-        )}
-      </View>
-    ));
-  };
-  
+  const renderItem = ({ item, index }) => (
+    <View style={styles.resultItem}>
+      <TouchableOpacity onPress={() => toggleItem(index)} activeOpacity={0.7}>
+        <View style={styles.resultTitleContainer}>
+          <Text style={[styles.resultDeweyNo, styles.selectableText]}>{item.dewey_no || 'No yok'}</Text>
+          <Text style={[styles.resultTitle, styles.selectableText]}>{item.konu_adi || 'Başlık yok'}</Text>
+        </View>
+      </TouchableOpacity>
+      {expandedItems[index] && (
+        <Text style={[styles.resultDescription, styles.selectableText]}>
+          {item.aciklama ? item.aciklama : 'Açıklama bulunamadı'}
+        </Text>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <Image
-        source={require('../img/verinova-JPG-300x122.jpg')}
-        style={styles.icon}
-      />
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.navigationButton} 
-          onPress={() => navigation.navigate('DeweyNumbers')}
-        >
-          <Text style={styles.navigationButtonText}>Dewey Sayıları</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navigationButton} 
-          onPress={() => navigation.navigate('TNumbers')}
-        >
-          <Text style={styles.navigationButtonText}>T Sayıları</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Konu ara..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+      <View style={styles.headerContainer}>
+        <Image
+          source={require('../img/verinova-JPG-300x122.jpg')}
+          style={styles.icon}
         />
-      </View>
-
-      {searchResults.length > 0 ? (
-        <View style={styles.resultsContainer}>
-          {renderSearchResults()}
+        
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.navigationButton} 
+            onPress={() => navigation.navigate('DeweyNumbers')}
+          >
+            <Text style={styles.navigationButtonText}>Dewey Sayıları</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navigationButton} 
+            onPress={() => navigation.navigate('TNumbers')}
+          >
+            <Text style={styles.navigationButtonText}>T Sayıları</Text>
+          </TouchableOpacity>
         </View>
-      ) : searchQuery.length > 2 ? (
-        <Text style={styles.noResultText}>Sonuç bulunamadı</Text>
-      ) : null}
+        
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Konu ara..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <View style={styles.radioContainer}>
+            <TouchableOpacity
+              style={[styles.radioButton, searchType === 'konu_adi' && styles.radioButtonSelected]}
+              onPress={() => setSearchType('konu_adi')}
+            >
+              <Text style={styles.radioButtonText}>Konu Adı</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.radioButton, searchType === 'aciklama' && styles.radioButtonSelected]}
+              onPress={() => setSearchType('aciklama')}
+            >
+              <Text style={styles.radioButtonText}>Açıklama</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      
+      <FlatList
+        data={searchResults}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={styles.flatListContent}
+        style={{ height: Dimensions.get('window').height * 0.7 }}
+      />
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
@@ -124,44 +135,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-
+  headerContainer: {
+    paddingTop: 10,
+    paddingHorizontal: 10,
+  },
   icon: {
     width: 200,
     height: 81,
     resizeMode: 'contain',
     alignSelf: 'center',
-    marginVertical: 10,
-  },
-  searchContainer: {
-    padding: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  searchInput: {
-    width: '80%',
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingLeft: 15,
-    paddingRight: 15,
-  },
-  libraryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    padding: 5,
-  },
-  resultItem: {
-    backgroundColor: '#f9f9f9',
     marginBottom: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    marginVertical: 10,
+    marginBottom: 10,
   },
   navigationButton: {
     backgroundColor: '#4CAF50',
@@ -174,6 +162,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  searchContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  searchInput: {
+    width: '100%',
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingLeft: 15,
+    paddingRight: 15,
+    marginBottom: 10,
+  },
+  radioContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  radioButton: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  radioButtonSelected: {
+    backgroundColor: '#4CAF50',
+  },
+  radioButtonText: {
+    color: '#4CAF50',
+  },
+  flatListContent: {
+    paddingHorizontal: 10,
+    paddingBottom: 60, // Logout butonunun üzerinde boşluk bırakmak için
+  },
+  resultItem: {
+    backgroundColor: '#f9f9f9',
+    marginBottom: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
   },
   resultTitleContainer: {
     flexDirection: 'row',
@@ -196,34 +226,6 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
   },
-  resultDescription: {
-    padding: 10,
-    fontSize: 14,
-  },
-  library: {
-    backgroundColor: '#f0f0f0',
-    padding: 5,
-    margin: 3,
-    borderRadius: 5,
-    width: '3%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.20,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  libraryText: {
-    color: '#333',
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
   logoutButton: {
     position: 'absolute',
     bottom: 10,
@@ -239,19 +241,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  resultsContainer: {
-    padding: 10,
-  },
-  resultItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  noResultText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-    color: '#666',
+  selectableText: {
+    userSelect: 'text',
   },
 });
 

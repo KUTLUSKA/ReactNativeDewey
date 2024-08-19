@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import config from './config';
 
 const DeweyLevel1Screen = ({ route, navigation }) => {
@@ -13,7 +13,77 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchSubCategories();
-  }, []);
+  }, []); 
+
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+  
+    // Link içeren düzenli ifade
+    const linkRegex = /<a href='(http:\/\/www\.verinova\.com\.tr\/\?page_id=415\/#\w+)' target='_blank'>(.*?)<\/a>/g;
+  
+    // Doğrudan URL içeren düzenli ifade
+    const directLinkRegex = /http:\/\/www\.verinova\.com\.tr\/\?page_id=415\/#\w+/g;
+  
+    let parts = [];
+    let lastIndex = 0;
+    let match;
+  
+    // İşlem için bir fonksiyon tanımlanır
+    const processMatch = (match) => {
+      // Linkten önceki metni ekleyin
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+  
+      // Linki ekleyin
+      parts.push(
+        <Text
+          key={match[1]} // Benzersiz bir anahtar olarak URL'yi kullan
+          style={styles.link}
+          onPress={() => Linking.openURL(match[1])}
+        >
+          {match[2]} {/* Link metni */}
+        </Text>
+      );
+  
+      lastIndex = match.index + match[0].length;
+    };
+  
+    // `<a>` etiketi içeren linkleri işleme
+    while ((match = linkRegex.exec(text)) !== null) {
+      processMatch(match);
+    }
+  
+    // Doğrudan URL içeren linkleri işleme
+    let directLinkMatch;
+    while ((directLinkMatch = directLinkRegex.exec(text)) !== null) {
+      // Eğer bu URL `<a>` etiketi içinde değilse, işleyin
+      if (!text.substring(directLinkMatch.index - 15, directLinkMatch.index).includes('<a ')) {
+        // Linkten önceki metni ekleyin
+        if (directLinkMatch.index > lastIndex) {
+          parts.push(text.substring(lastIndex, directLinkMatch.index));
+        }
+  
+        // Linki ekleyin
+        parts.push(
+          <Text
+            key={directLinkMatch[0]} // Benzersiz bir anahtar olarak URL'yi kullan
+            style={styles.link}
+            onPress={() => Linking.openURL(directLinkMatch[0])}
+          >
+            Kılavuz
+          </Text>
+        );
+  
+        lastIndex = directLinkMatch.index + directLinkMatch[0].length;
+      }
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+  
+    return parts;
+  };
 
   const fetchSubCategories = async () => {
     setIsLoading(true);
@@ -38,7 +108,6 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       
-      // Alt kategorileri kontrol et ve işaretle
       const markedData = await Promise.all(data.map(async (category) => {
         const hasSubcategories = await checkForSubcategories(category.real_dewey_no);
         return { ...category, hasSubcategories };
@@ -145,8 +214,14 @@ const DeweyLevel1Screen = ({ route, navigation }) => {
               <Text style={styles.selectedTitle}>{selectedSubCategory.konu_adi}</Text>
               <Text style={styles.selectedNumber}>{selectedSubCategory.real_dewey_no}</Text>
               <Text style={styles.selectedDescription}>
-                {selectedSubCategory.aciklama || 'Açıklama bulunamadı.'}
+                {renderTextWithLinks(selectedSubCategory.aciklama) || 'Açıklama bulunamadı.'}
               </Text>
+              {selectedSubCategory.not1 && (
+                <Text style={styles.note}>Not 1: {renderTextWithLinks(selectedSubCategory.not1)}</Text>
+              )}
+              {selectedSubCategory.not2 && (
+                <Text style={styles.note}>Not 2: {renderTextWithLinks(selectedSubCategory.not2)}</Text>
+              )}
               <Text style={styles.level2Title}>Alt Kategoriler:</Text>
               {isLoadingLevel2 ? (
                 <ActivityIndicator size="small" color="#3498db" />
@@ -181,6 +256,12 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
   },
+  note: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -189,6 +270,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     flexDirection: 'row',
+  },
+  link: {
+    color: 'blue',
+    textDecorationLine: 'underline',
   },
   leftPanel: {
     width: '30%',

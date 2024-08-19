@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, FlatList, Dimensions,  } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, TextInput, FlatList, Dimensions, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from './config';
-
+//navigasyon
 const { height } = Dimensions.get('window');
-
 const HomeScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchType, setSearchType] = useState('konu_adi');
   const [expandedItems, setExpandedItems] = useState({});
-
+  
+  //oturumu sonlandırma
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem('userToken');
@@ -20,6 +20,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  //search butonu işlevselliği
   const handleSearch = async () => {
     try {
       const response = await fetch(`${config.API_URL}/api/search?query=${searchQuery}&type=${searchType}`);
@@ -36,6 +37,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+//eğer searchbox'un içerisine 2 karakterden fazla bir şey yazılı ise sorgu başlar
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.length > 2) {
@@ -52,6 +54,76 @@ const HomeScreen = ({ navigation }) => {
     setExpandedItems(prev => ({...prev, [index]: !prev[index]}));
   };
 
+const renderTextWithLinks = (text) => {
+  if (!text) return null;
+
+  // Link içeren düzenli ifade
+  const linkRegex = /<a href='(http:\/\/www\.verinova\.com\.tr\/\?page_id=415\/#\w+)' target='_blank'>(.*?)<\/a>/g;
+
+  // Doğrudan URL içeren düzenli ifade
+  const directLinkRegex = /http:\/\/www\.verinova\.com\.tr\/\?page_id=415\/#\w+/g;
+
+  let parts = [];
+  let lastIndex = 0;
+  let match;
+
+  // İşlem için bir fonksiyon tanımlanır
+  const processMatch = (match) => {
+    // Linkten önceki metni ekleyin
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    
+    parts.push(
+      <Text
+        key={match[1]} // Benzersiz bir anahtar olarak URL'yi kullan
+        style={styles.link}
+        onPress={() => Linking.openURL(match[1])}
+      >
+        {match[2]} {/* Link metni */}
+      </Text>
+    );
+
+    lastIndex = match.index + match[0].length;
+  };
+
+  // `<a>` etiketi içeren linkleri işleme
+  while ((match = linkRegex.exec(text)) !== null) {
+    processMatch(match);
+  }
+
+  // Doğrudan URL içeren linkleri işleme
+  let directLinkMatch;
+  while ((directLinkMatch = directLinkRegex.exec(text)) !== null) {
+    // Eğer bu URL `<a>` etiketi içinde değilse, işleyin
+    if (!text.substring(directLinkMatch.index - 15, directLinkMatch.index).includes('<a ')) {
+      // Linkten önceki metni ekleyin
+      if (directLinkMatch.index > lastIndex) {
+        parts.push(text.substring(lastIndex, directLinkMatch.index));
+      }
+
+      // Linki ekleyin
+      parts.push(
+        <Text
+          key={directLinkMatch[0]} // Benzersiz bir anahtar olarak URL'yi kullan
+          style={styles.link}
+          onPress={() => Linking.openURL(directLinkMatch[0])}
+        >
+          Kılavuz
+        </Text>
+      );
+
+      lastIndex = directLinkMatch.index + directLinkMatch[0].length;
+    }
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts;
+};
+  
+//sonuçları renderlar
   const renderItem = ({ item, index }) => (
     <View style={styles.resultItem}>
       <TouchableOpacity onPress={() => toggleItem(index)} activeOpacity={0.7}>
@@ -61,13 +133,21 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
       {expandedItems[index] && (
-        <Text style={[styles.resultDescription, styles.selectableText]}>
-          {item.aciklama ? item.aciklama : 'Açıklama bulunamadı'}
-        </Text>
+        <View style={styles.expandedContent}>
+          <Text style={[styles.resultDescription, styles.selectableText]}>
+            {item.aciklama ? renderTextWithLinks(item.aciklama) : 'Açıklama bulunamadı'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.inspectButton}
+            onPress={() => handleInspect(item)}
+          >
+            <Text style={styles.inspectButtonText}>İncele</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
-
+//sayfa düzeni
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
@@ -81,13 +161,13 @@ const HomeScreen = ({ navigation }) => {
             style={styles.navigationButton} 
             onPress={() => navigation.navigate('DeweyNumbers')}
           >
-            <Text style={styles.navigationButtonText}>Dewey Sayıları</Text>
+            <Text style={styles.navigationButtonText}>Dewey Sınıflandırma</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.navigationButton} 
             onPress={() => navigation.navigate('TNumbers')}
           >
-            <Text style={styles.navigationButtonText}>T Sayıları</Text>
+            <Text style={styles.navigationButtonText}>Tablolar</Text>
           </TouchableOpacity>
         </View>
         
@@ -114,7 +194,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
       </View>
-      
+
       <FlatList
         data={searchResults}
         renderItem={renderItem}
@@ -129,7 +209,7 @@ const HomeScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
+//stiller
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -150,6 +230,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     marginBottom: 10,
+  },
+  link: {
+    color: 'blue',
+    textDecorationLine: 'underline',
   },
   navigationButton: {
     backgroundColor: '#4CAF50',
@@ -197,7 +281,7 @@ const styles = StyleSheet.create({
   },
   flatListContent: {
     paddingHorizontal: 10,
-    paddingBottom: 60, // Logout butonunun üzerinde boşluk bırakmak için
+    paddingBottom: 60,
   },
   resultItem: {
     backgroundColor: '#f9f9f9',
@@ -243,6 +327,21 @@ const styles = StyleSheet.create({
   },
   selectableText: {
     userSelect: 'text',
+  },
+  expandedContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  inspectButton: {
+    backgroundColor: '#007AFF',
+    padding: 8,
+    borderRadius: 5,
+  },
+  inspectButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 

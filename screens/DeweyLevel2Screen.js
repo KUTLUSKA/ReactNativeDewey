@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView, ActivityIndicator } from 'react-native';
 import config from './config';
-
+//burası 645 gibi kategorilerden seçtiysek 111.5 112.6 113.7 gibi kategorilerin main olarak görüntülendiği sayfadır
 const DeweyLevel2Screen = ({ route, navigation }) => {
   const { level1Category } = route.params;
   const [level2Categories, setLevel2Categories] = useState([]);
@@ -137,6 +137,12 @@ const DeweyLevel2Screen = ({ route, navigation }) => {
               <Text style={styles.selectedDescription}>
                 {selectedLevel2Category.aciklama || 'Açıklama bulunamadı.'}
               </Text>
+              {selectedLevel2Category.not1 && (
+                <Text style={styles.note}>Not 1: {selectedLevel2Category.not1}</Text>
+              )}
+              {selectedLevel2Category.not2 && (
+                <Text style={styles.note}>Not 2: {selectedLevel2Category.not2}</Text>
+              )}
               <Text style={styles.subCategoriesTitle}>Alt Kategoriler:</Text>
               {isLoadingLevel3 ? (
                 <ActivityIndicator size="small" color="#3498db" />
@@ -163,6 +169,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ecf0f1',
+  },
+  note: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginBottom: 10,
+    fontStyle: 'italic',
   },
   header: {
     backgroundColor: '#2c3e50',

@@ -114,7 +114,7 @@ app.get('/api/search', (req, res) => {
   const searchQuery = query.trim();
   const sqlQuery = `
     SELECT 
-      dewey_no, g1, g2, g3, g4, g5, g6, g7, g8, konu_adi, aciklama,
+      dewey_no, g1, g2, g3, g4, g5, g6, g7, g8, konu_adi, aciklama, not1, not2,
       CASE
         WHEN ${type} = ? THEN 1
         WHEN ${type} LIKE ? THEN 2
@@ -153,7 +153,9 @@ app.get('/api/search', (req, res) => {
       return {
         dewey_no: fullDeweyNo,
         konu_adi: result.konu_adi,
-        aciklama: result.aciklama
+        aciklama: result.aciklama,
+        not1: result.not1,
+        not2: result.not2
       };
     });
 
@@ -167,7 +169,7 @@ app.get('/api/dewey/details', (req, res) => {
   if (!dewey_no) return res.status(400).json({ message: 'Dewey numarası gerekli' });
 
   db.query(
-    'SELECT dewey_no, konu_adi, aciklama FROM deweys WHERE dewey_no = ?',
+    'SELECT dewey_no, konu_adi, aciklama, not1, not2 FROM deweys WHERE dewey_no = ?',
     [dewey_no],
     (err, results) => {
       if (err) return handleDatabaseError(res, err, 'Dewey detayları alınırken hata oluştu.');
@@ -189,22 +191,23 @@ app.get('/api/subcategories/:mainCategory', (req, res) => {
   if (!mainCategory || mainCategory === 'undefined' || isNaN(mainCategory)) {
     return res.status(400).json({ message: 'Geçerli bir ana kategori gerekli' });
   }
-
   let query;
   let queryParams;
-//900 lere bir
+  //900 lere bir
+
   if (mainCategory === '900') {
     query = `
-      SELECT real_dewey_no, konu_adi 
+      SELECT real_dewey_no, konu_adi, not1, not2
       FROM deweys 
       WHERE real_dewey_no >= '900' AND real_dewey_no < '1000'
       ORDER BY real_dewey_no
     `;
     queryParams = [];
+
   } else {
     const nextMainCategory = String(Number(mainCategory) + 100).padStart(3, '0');
     query = `
-      SELECT real_dewey_no, konu_adi 
+      SELECT real_dewey_no, konu_adi, not1, not2
       FROM deweys 
       WHERE real_dewey_no >= ? AND real_dewey_no < ? 
       AND LENGTH(real_dewey_no) = 3
@@ -250,7 +253,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
   if (currentCategory === 990) {
     // 990'lar için özel durum
     query = `
-      SELECT real_dewey_no, konu_adi, aciklama
+      SELECT real_dewey_no, konu_adi, aciklama, not1, not2
       FROM deweys
       WHERE real_dewey_no >= ? AND real_dewey_no < 1000
       ORDER BY real_dewey_no
@@ -258,7 +261,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
     queryParams = [dewey_no];
   } else {
     query = `
-      SELECT real_dewey_no, konu_adi, aciklama
+      SELECT real_dewey_no, konu_adi, aciklama, not1, not2
       FROM deweys
       WHERE real_dewey_no >= ? AND real_dewey_no < ? AND LENGTH(real_dewey_no) = 3
       ORDER BY real_dewey_no
@@ -275,6 +278,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
       return res.status(500).json({ error: 'Database error occurred' });
     }
     //log check
+    
     //console.log('Query results:', results); 
 
     if (results.length === 0) {
@@ -285,7 +289,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
     res.json(results);
   });
 });
-// Level 2 subcategories
+// Level 2 sub categories
 app.get('/api/dewey-level2/:dewey_no', (req, res) => {
   const { dewey_no } = req.params;
   
@@ -303,13 +307,16 @@ app.get('/api/dewey-level2/:dewey_no', (req, res) => {
   console.log('Next category:', nextCategory);
 
   let query = `
-    SELECT real_dewey_no, konu_adi, aciklama
-    FROM deweys
-    WHERE CAST(real_dewey_no AS DECIMAL(5,1)) >= ? 
-      AND CAST(real_dewey_no AS DECIMAL(5,1)) < ?
-      AND real_dewey_no LIKE CONCAT(?, '.%')
-      AND LENGTH(SUBSTRING_INDEX(real_dewey_no, '.', -1)) = 1
-    ORDER BY CAST(real_dewey_no AS DECIMAL(5,1))
+    SELECT d1.real_dewey_no, d1.konu_adi, d1.aciklama, d1.not1, d1.not2,
+           EXISTS(SELECT 1 FROM deweys d2 
+                  WHERE d2.real_dewey_no LIKE CONCAT(d1.real_dewey_no, '.%')
+                  AND d2.real_dewey_no != d1.real_dewey_no) AS hasSubcategories
+    FROM deweys d1
+    WHERE CAST(d1.real_dewey_no AS DECIMAL(5,1)) >= ? 
+      AND CAST(d1.real_dewey_no AS DECIMAL(5,1)) < ?
+      AND d1.real_dewey_no LIKE CONCAT(?, '.%')
+      AND LENGTH(SUBSTRING_INDEX(d1.real_dewey_no, '.', -1)) = 1
+    ORDER BY CAST(d1.real_dewey_no AS DECIMAL(5,1))
   `;
 
   let queryParams = [currentCategory, nextCategory, dewey_no];
@@ -331,6 +338,7 @@ app.get('/api/dewey-level2/:dewey_no', (req, res) => {
     res.json(results);
   });
 });
+
 app.get('/api/dewey-level3/:dewey_no', (req, res) => {
   const { dewey_no } = req.params;
   
@@ -342,12 +350,15 @@ app.get('/api/dewey-level3/:dewey_no', (req, res) => {
   }
 
   const query = `
-    SELECT real_dewey_no, konu_adi, aciklama
-    FROM deweys
-    WHERE real_dewey_no LIKE CONCAT(?, '%')
-      AND real_dewey_no != ?
-      AND LENGTH(REPLACE(real_dewey_no, '.', '')) <= LENGTH(REPLACE(?, '.', '')) + 1
-    ORDER BY real_dewey_no
+    SELECT d1.real_dewey_no, d1.konu_adi, d1.aciklama, d1.not1, d1.not2,
+           EXISTS(SELECT 1 FROM deweys d2 
+                  WHERE d2.real_dewey_no LIKE CONCAT(d1.real_dewey_no, '.%')
+                  AND d2.real_dewey_no != d1.real_dewey_no) AS hasSubcategories
+    FROM deweys d1
+    WHERE d1.real_dewey_no LIKE CONCAT(?, '%')
+      AND d1.real_dewey_no != ?
+      AND LENGTH(REPLACE(d1.real_dewey_no, '.', '')) <= LENGTH(REPLACE(?, '.', '')) + 1
+    ORDER BY d1.real_dewey_no
   `;
 
   const queryParams = [dewey_no, dewey_no, dewey_no];
@@ -383,7 +394,7 @@ app.get('/api/dewey-level4/:dewey_no', (req, res) => {
   }
 
   const query = `
-    SELECT real_dewey_no, konu_adi, aciklama
+    SELECT real_dewey_no, konu_adi, aciklama, not1, not2,
     FROM deweys
     WHERE real_dewey_no LIKE CONCAT(?, '%')
       AND real_dewey_no != ?
@@ -426,6 +437,83 @@ app.get('/api/main-dewey-numbers', (req, res) => {
     res.json(results);
   });
 });
+
+// T Tables Endpoint
+app.get('/api/t-tables', (req, res) => {
+  const query = `
+    SELECT id, tablo_no, konu_adi, aciklama
+    FROM tables
+    WHERE tablo_no IN ('T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7')
+    ORDER BY tablo_no
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T tabloları alınırken hata:', err);
+      return res.status(500).json({ message: 'T tabloları alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+// T Table Entries Endpoint
+app.get('/api/t-tables/:tableNumber/entries', (req, res) => {
+  const { tableNumber } = req.params;
+  
+  const query = `
+    SELECT id, g1, g2, g3, g4, g5, g6, g7, konu_adi, aciklama
+    FROM tables
+    WHERE tablo_no = ?
+    ORDER BY g1, g2, g3, g4, g5, g6, g7
+  `;
+
+  db.query(query, [tableNumber], (err, results) => {
+    if (err) {
+      console.error(`T Tablo ${tableNumber} girişleri alınırken hata:`, err);
+      return res.status(500).json({ message: `T Tablo ${tableNumber} girişleri alınırken hata oluştu.` });
+    }
+    res.json(results);
+  });
+});
+
+// T1 Table subcategories Endpoint
+// T Table Entries Endpoint
+app.get('/api/t-tables/:tableNumberSu/entries', (req, res) => {
+  const { tableNumber } = req.params;
+  
+  let query;
+  let queryParams;
+
+  if (tableNumber === 'T1') {
+    query = `
+      SELECT id, g1, g2, g3, g4, g5, g6, g7, konu_adi, aciklama
+      FROM tables
+      WHERE tablo_no = ? AND id BETWEEN 2 AND 175
+      ORDER BY g1, g2, g3, g4, g5, g6, g7
+    `;
+    queryParams = [tableNumber];
+  } else {
+    query = `
+      SELECT id, g1, g2, g3, g4, g5, g6, g7, konu_adi, aciklama
+      FROM tables
+      WHERE tablo_no = ?
+      ORDER BY g1, g2, g3, g4, g5, g6, g7
+    `;
+    queryParams = [tableNumber];
+  }
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error(`T Tablo ${tableNumber} girişleri alınırken hata:`, err);
+      return res.status(500).json({ message: `T Tablo ${tableNumber} girişleri alınırken hata oluştu.` });
+    }
+    res.json(results);
+  });
+});
+
+
+
+
 
 // Sunucuyu başlat
 app.listen(port, () => {

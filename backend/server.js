@@ -199,7 +199,9 @@ app.get('/api/subcategories/:mainCategory', (req, res) => {
     query = `
       SELECT real_dewey_no, konu_adi, not1, not2
       FROM deweys 
-      WHERE real_dewey_no >= '900' AND real_dewey_no < '1000'
+      WHERE real_dewey_no >= 900 AND real_dewey_no < 1000
+      AND LENGTH(real_dewey_no) = 3
+      AND real_dewey_no % 10 = 0 
       ORDER BY real_dewey_no
     `;
     queryParams = [];
@@ -256,6 +258,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
       SELECT real_dewey_no, konu_adi, aciklama, not1, not2
       FROM deweys
       WHERE real_dewey_no >= ? AND real_dewey_no < 1000
+      AND LENGTH(real_dewey_no) = 3
       ORDER BY real_dewey_no
     `;
     queryParams = [dewey_no];
@@ -394,13 +397,12 @@ app.get('/api/dewey-level4/:dewey_no', (req, res) => {
   }
 
   const query = `
-    SELECT real_dewey_no, konu_adi, aciklama, not1, not2,
-    FROM deweys
-    WHERE real_dewey_no LIKE CONCAT(?, '%')
-      AND real_dewey_no != ?
-      AND LENGTH(REPLACE(real_dewey_no, '.', '')) > LENGTH(REPLACE(?, '.', ''))
-    ORDER BY real_dewey_no
-  `;
+  SELECT real_dewey_no, konu_adi, aciklama, not1, not2
+  FROM deweys
+  WHERE real_dewey_no LIKE CONCAT(?, '%')
+    AND real_dewey_no != ?
+  ORDER BY real_dewey_no
+`;
 
   const queryParams = [dewey_no, dewey_no, dewey_no];
 
@@ -476,43 +478,23 @@ app.get('/api/t-tables/:tableNumber/entries', (req, res) => {
   });
 });
 
-// T1 Table subcategories Endpoint
-// T Table Entries Endpoint
-app.get('/api/t-tables/:tableNumberSu/entries', (req, res) => {
-  const { tableNumber } = req.params;
-  
-  let query;
-  let queryParams;
+// T1 girişlerini getiren API endpoint'i
+app.get('/api/t-tables/T1-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 2 AND 175
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
 
-  if (tableNumber === 'T1') {
-    query = `
-      SELECT id, g1, g2, g3, g4, g5, g6, g7, konu_adi, aciklama
-      FROM tables
-      WHERE tablo_no = ? AND id BETWEEN 2 AND 175
-      ORDER BY g1, g2, g3, g4, g5, g6, g7
-    `;
-    queryParams = [tableNumber];
-  } else {
-    query = `
-      SELECT id, g1, g2, g3, g4, g5, g6, g7, konu_adi, aciklama
-      FROM tables
-      WHERE tablo_no = ?
-      ORDER BY g1, g2, g3, g4, g5, g6, g7
-    `;
-    queryParams = [tableNumber];
-  }
-
-  db.query(query, queryParams, (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
-      console.error(`T Tablo ${tableNumber} girişleri alınırken hata:`, err);
-      return res.status(500).json({ message: `T Tablo ${tableNumber} girişleri alınırken hata oluştu.` });
+      console.error('T1 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T1 girişleri alınırken hata oluştu.' });
     }
     res.json(results);
   });
 });
-
-
-
 
 
 // Sunucuyu başlat

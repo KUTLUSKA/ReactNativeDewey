@@ -122,31 +122,35 @@ const renderTextWithLinks = (text) => {
 
   return parts;
 };
-  
+
+const handleInspect = (item) => {
+  navigation.navigate('DeweyDetails', { item });
+};
+
 //sonuçları renderlar
-  const renderItem = ({ item, index }) => (
-    <View style={styles.resultItem}>
-      <TouchableOpacity onPress={() => toggleItem(index)} activeOpacity={0.7}>
-        <View style={styles.resultTitleContainer}>
-          <Text style={[styles.resultDeweyNo, styles.selectableText]}>{item.dewey_no || 'No yok'}</Text>
-          <Text style={[styles.resultTitle, styles.selectableText]}>{item.konu_adi || 'Başlık yok'}</Text>
-        </View>
-      </TouchableOpacity>
-      {expandedItems[index] && (
-        <View style={styles.expandedContent}>
-          <Text style={[styles.resultDescription, styles.selectableText]}>
-            {item.aciklama ? renderTextWithLinks(item.aciklama) : 'Açıklama bulunamadı'}
-          </Text>
-          <TouchableOpacity 
-            style={styles.inspectButton}
-            onPress={() => handleInspect(item)}
-          >
-            <Text style={styles.inspectButtonText}>İncele</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
+const renderItem = ({ item, index }) => (
+  <View style={styles.resultItem}>
+    <TouchableOpacity onPress={() => toggleItem(index)} activeOpacity={0.7}>
+      <View style={styles.resultTitleContainer}>
+        <Text style={[styles.resultDeweyNo, styles.selectableText]}>{item.dewey_no || 'No yok'}</Text>
+        <Text style={[styles.resultTitle, styles.selectableText]}>{item.konu_adi || 'Başlık yok'}</Text>
+      </View>
+    </TouchableOpacity>
+    {expandedItems[index] && (
+      <View style={styles.expandedContent}>
+        <Text style={[styles.resultDescription, styles.selectableText]}>
+          {item.aciklama ? renderTextWithLinks(item.aciklama) : 'Açıklama bulunamadı'}
+        </Text>
+        <TouchableOpacity 
+          style={styles.inspectButton}
+          onPress={() => handleInspect(item)}
+        >
+          <Text style={styles.inspectButtonText}>İncele</Text>
+        </TouchableOpacity>
+      </View>
+    )}
+  </View>
+);
 //sayfa düzeni
   return (
     <SafeAreaView style={styles.container}>

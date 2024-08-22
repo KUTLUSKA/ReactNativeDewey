@@ -292,6 +292,7 @@ app.get('/api/dewey-level1/:dewey_no', (req, res) => {
     res.json(results);
   });
 });
+//Burada deweyno. dan sonra 0 varsa diye ayreten kontrol edip onu da resulta ekle
 // Level 2 sub categories
 app.get('/api/dewey-level2/:dewey_no', (req, res) => {
   const { dewey_no } = req.params;
@@ -342,6 +343,7 @@ app.get('/api/dewey-level2/:dewey_no', (req, res) => {
   });
 });
 
+//level3
 app.get('/api/dewey-level3/:dewey_no', (req, res) => {
   const { dewey_no } = req.params;
   
@@ -491,6 +493,47 @@ app.get('/api/t-tables/T1-entries', (req, res) => {
     if (err) {
       console.error('T1 girişleri alınırken hata:', err);
       return res.status(500).json({ message: 'T1 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+app.get('/api/related-categories', (req, res) => {
+  const { base_number, level } = req.query;
+
+  if (!base_number || !level) {
+    return res.status(400).json({ message: 'base_number ve level parametreleri gereklidir.' });
+  }
+
+  let query;
+  let queryParams;
+
+  if (level === '1') {
+    // 1. seviye için sorgu (örn: 310-319)
+    query = `
+      SELECT real_dewey_no, konu_adi, aciklama 
+      FROM deweys 
+      WHERE real_dewey_no >= ? AND real_dewey_no < ?
+      ORDER BY dewey_no
+    `;
+    queryParams = [`${base_number}0`, `${parseInt(base_number) + 1}0`];
+  } else if (level === '2') {
+    // 2. seviye için sorgu (örn: 331.10-331.19)
+    query = `
+      SELECT real_dewey_no, konu_adi, aciklama 
+      FROM deweys 
+      WHERE real_dewey_no >= ? AND real_dewey_no < ?
+      ORDER BY dewey_no
+    `;
+    queryParams = [`${base_number}0`, `${base_number}9.99`];
+  } else {
+    return res.status(400).json({ message: 'Geçersiz level değeri.' });
+  }
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error('İlgili kategoriler alınırken hata:', err);
+      return res.status(500).json({ message: 'İlgili kategoriler alınırken hata oluştu.' });
     }
     res.json(results);
   });

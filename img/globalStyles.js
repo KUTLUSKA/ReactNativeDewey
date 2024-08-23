@@ -27,15 +27,24 @@ const styles = StyleSheet.create({
   },
   rightPanel: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#fff',
+  },
+  rightTopPanel: {
+    flex: 1,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#bdc3c7',
+  },
+  rightBottomPanel: {
+    flex: 1,
+    padding: 20,
   },
   tTableItem: {
     padding: 15,
     backgroundColor: '#fff',
   },
   selectedTTableItem: {
-    backgroundColor: '#e0f2f1',
+    backgroundColor: '#e8f4fd',
   },
   tTableNumber: {
     fontWeight: 'bold',
@@ -57,93 +66,91 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     marginBottom: 10,
   },
+    selectedTEntryItem: {
+    backgroundColor: '#e8f4fd',
+  },
   selectedNumber: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#3498db',
     marginBottom: 20,
   },
-  tEntryItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
+  selectedDescription: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#34495e',
+    marginBottom: 20,
   },
-  tEntryTitle: {
-    fontSize: 18,
+  note: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  entriesTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
+    marginBottom: 15,
     color: '#2c3e50',
-    marginBottom: 5,
+  },
+  entryRow: {
+    justifyContent: 'space-between',
+  },
+  tEntryItem: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
+    width: '47%',
+  },
+  tEntryItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tEntryNumber: {
-    fontSize: 16,
-    color: '#3498db',
-    marginBottom: 5,
-  },
-  tEntryDescription: {
+    fontWeight: 'bold',
     fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 5,
+    color: '#2980b9',
   },
-  tEntryDetails: {
-    fontSize: 14,
+  tEntryTitle: {
+    fontSize: 12,
     color: '#34495e',
   },
-  tableInfo: {
-    padding: 15,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
-  tableInfoText: {
-    fontSize: 16,
-    color: '#2c3e50',
-    marginBottom: 10,
-  },
-  tableInfoDescription: {
+  noEntriesText: {
     fontSize: 14,
     color: '#7f8c8d',
+    fontStyle: 'italic',
   },
-  loadingContainer: {
+  noSelectionText: {
+    fontSize: 18,
+    color: '#7f8c8d',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   errorText: {
     fontSize: 18,
     color: '#e74c3c',
     textAlign: 'center',
+    marginBottom: 20,
   },
-  selectedEntryItem: {
+  retryButton: {
     backgroundColor: '#3498db',
-  },
-  rightTopPanel: {
     padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#bdc3c7',
+    borderRadius: 5,
   },
-  rightBottomPanel: {
-    flex: 1,
-  },
-  selectedTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  selectedNumber: {
+  retryButtonText: {
+    color: '#fff',
     fontSize: 16,
-    marginBottom: 5,
+    fontWeight: 'bold',
   },
-  selectedDescription: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  selectedDetails: {
-    fontSize: 14,
+  link: {
+    color: 'blue',
+    textDecorationLine: 'underline',
   },
 });
 

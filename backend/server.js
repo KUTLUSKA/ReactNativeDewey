@@ -497,6 +497,62 @@ app.get('/api/t-tables/T1-entries', (req, res) => {
     res.json(results);
   });
 });
+// T2 girişlerini getiren API endpoint'i
+app.get('/api/t-tables/T2-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 177 AND 1789
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T2 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T2 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+// T3 girişlerini getiren API endpoint'i
+app.get('/api/t-tables/T3-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 1789 AND 1946
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+    AND tablo_no LIKE 'T%'
+    AND tablo_no != 'T3'
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T3 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T3 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+// T4 girişlerini getiren API endpoint'i
+app.get('/api/t-tables/T4-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 1948 AND 1984
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T4 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T4 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+
+
 
 app.get('/api/related-categories', (req, res) => {
   const { base_number, level } = req.query;

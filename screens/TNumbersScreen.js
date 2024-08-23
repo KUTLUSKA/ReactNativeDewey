@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, FlatList, ScrollView, StyleSheet, StatusBar, Linking } from 'react-native';
 import config from './config';
+import styles from '../img/globalStyles'
 
 const TNumbersScreen = ({ route, navigation }) => {
   const [tTables, setTTables] = useState([]);
   const [selectedTTable, setSelectedTTable] = useState(null);
+  const [selectedTEntry, setSelectedTEntry] = useState(null);
   const [tEntries, setTEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
@@ -32,10 +34,18 @@ const TNumbersScreen = ({ route, navigation }) => {
 
   const fetchTEntries = async (tableNumber) => {
     setIsLoadingEntries(true);
+    setError(null);
     try {
-      const response = await fetch(`${config.API_URL}/api/t-tables/${tableNumber}-entries`);
+      let url;
+      if (['T1', 'T2', 'T3', 'T4'].includes(tableNumber)) {
+        url = `${config.API_URL}/api/t-tables/${tableNumber}-entries`;
+      } else {
+        url = `${config.API_URL}/api/t-tables/${tableNumber}/entries`;
+      }
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
+      console.log(`Fetched entries for ${tableNumber}:`, data); // Debug log
       setTEntries(data);
     } catch (error) {
       console.error(`Error fetching ${tableNumber} entries:`, error);
@@ -45,9 +55,15 @@ const TNumbersScreen = ({ route, navigation }) => {
     }
   };
 
+
   const handleTTablePress = (tTable) => {
     setSelectedTTable(tTable);
+    setSelectedTEntry(null);
     fetchTEntries(tTable.tablo_no);
+  };
+
+  const handleTEntryPress = (tEntry) => {
+    setSelectedTEntry(tEntry);
   };
 
   const renderTextWithLinks = (text) => {
@@ -123,10 +139,13 @@ const TNumbersScreen = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  const renderTEntryItem = ({ item }) => (
+   const renderTEntryItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.tEntryItem}
-      onPress={() => {/* Navigate to detail screen if needed */}}
+      style={[
+        styles.tEntryItem,
+        selectedTEntry?.tablo_no === item.tablo_no && styles.selectedTEntryItem
+      ]}
+      onPress={() => handleTEntryPress(item)}
     >
       <View style={styles.tEntryItemContent}>
         <Text style={styles.tEntryNumber}>{item.tablo_no}</Text>
@@ -171,7 +190,21 @@ const TNumbersScreen = ({ route, navigation }) => {
         </View>
         <View style={styles.rightPanel}>
           <View style={styles.rightTopPanel}>
-            {selectedTTable ? (
+            {selectedTEntry ? (
+              <ScrollView>
+                <Text style={styles.selectedTitle}>{selectedTEntry.konu_adi}</Text>
+                <Text style={styles.selectedNumber}>{selectedTEntry.tablo_no}</Text>
+                <Text style={styles.selectedDescription}>
+                  {renderTextWithLinks(selectedTEntry.aciklama) || 'Açıklama bulunamadı.'}
+                </Text>
+                {selectedTEntry.not1 && (
+                  <Text style={styles.note}>Not 1: {renderTextWithLinks(selectedTEntry.not1)}</Text>
+                )}
+                {selectedTEntry.not2 && (
+                  <Text style={styles.note}>Not 2: {renderTextWithLinks(selectedTEntry.not2)}</Text>
+                )}
+              </ScrollView>
+            ) : selectedTTable ? (
               <ScrollView>
                 <Text style={styles.selectedTitle}>{selectedTTable.konu_adi}</Text>
                 <Text style={styles.selectedNumber}>{selectedTTable.tablo_no}</Text>
@@ -213,156 +246,5 @@ const TNumbersScreen = ({ route, navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ecf0f1',
-  },
-  header: {
-    backgroundColor: '#2c3e50',
-    padding: 15,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  leftPanel: {
-    width: '30%',
-    borderRightWidth: 1,
-    borderRightColor: '#bdc3c7',
-    backgroundColor: '#fff',
-  },
-  rightPanel: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  rightTopPanel: {
-    flex: 1,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#bdc3c7',
-  },
-  rightBottomPanel: {
-    flex: 1,
-    padding: 20,
-  },
-  tTableItem: {
-    padding: 15,
-    backgroundColor: '#fff',
-  },
-  selectedTTableItem: {
-    backgroundColor: '#e8f4fd',
-  },
-  tTableNumber: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#2980b9',
-    marginBottom: 5,
-  },
-  tTableTitle: {
-    fontSize: 14,
-    color: '#34495e',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#ecf0f1',
-  },
-  selectedTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 10,
-  },
-  selectedNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#3498db',
-    marginBottom: 20,
-  },
-  selectedDescription: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#34495e',
-    marginBottom: 20,
-  },
-  note: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 10,
-    fontStyle: 'italic',
-  },
-  entriesTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#2c3e50',
-  },
-  entryRow: {
-    justifyContent: 'space-between',
-  },
-  tEntryItem: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    margin: 5,
-    borderRadius: 5,
-    width: '47%',
-  },
-  tEntryItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tEntryNumber: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#2980b9',
-  },
-  tEntryTitle: {
-    fontSize: 12,
-    color: '#34495e',
-  },
-  noEntriesText: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    fontStyle: 'italic',
-  },
-  noSelectionText: {
-    fontSize: 18,
-    color: '#7f8c8d',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#e74c3c',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#3498db',
-    padding: 10,
-    borderRadius: 5,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  link: {
-    color: 'blue',
-    textDecorationLine: 'underline',
-  },
-});
 
 export default TNumbersScreen;

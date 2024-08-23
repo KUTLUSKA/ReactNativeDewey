@@ -551,6 +551,62 @@ app.get('/api/t-tables/T4-entries', (req, res) => {
   });
 });
 
+//T5 
+app.get('/api/t-tables/T5-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 1986 AND 2193
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T5 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T5 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+
+//T6
+app.get('/api/t-tables/T6-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 2195 AND 2535
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T6 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T6 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+//T7
+app.get('/api/t-tables/T7-entries', (req, res) => {
+  const query = `
+    SELECT tablo_no, konu_adi, aciklama
+    FROM tables 
+    WHERE id BETWEEN 2537 AND 2966
+    AND g1 = '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T7 girişleri alınırken hata:', err);
+      return res.status(500).json({ message: 'T7 girişleri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
+
 
 
 

@@ -34,18 +34,10 @@ const TNumbersScreen = ({ route, navigation }) => {
 
   const fetchTEntries = async (tableNumber) => {
     setIsLoadingEntries(true);
-    setError(null);
     try {
-      let url;
-      if (['T1', 'T2', 'T3', 'T4'].includes(tableNumber)) {
-        url = `${config.API_URL}/api/t-tables/${tableNumber}-entries`;
-      } else {
-        url = `${config.API_URL}/api/t-tables/${tableNumber}/entries`;
-      }
-      const response = await fetch(url);
+      const response = await fetch(`${config.API_URL}/api/t-tables/${tableNumber}-entries`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      console.log(`Fetched entries for ${tableNumber}:`, data); // Debug log
       setTEntries(data);
     } catch (error) {
       console.error(`Error fetching ${tableNumber} entries:`, error);
@@ -54,7 +46,6 @@ const TNumbersScreen = ({ route, navigation }) => {
       setIsLoadingEntries(false);
     }
   };
-
 
   const handleTTablePress = (tTable) => {
     setSelectedTTable(tTable);

@@ -39,6 +39,42 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  errorContainer: {
+    backgroundColor: '#ffcccc',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  errorText: {
+    color: '#cc0000',
+    fontSize: 14,
+  },
+  retryButton: {
+    backgroundColor: '#3498db',
+    padding: 5,
+    borderRadius: 5,
+    marginTop: 5,
+    alignSelf: 'flex-start',
+  },
+  tEntryItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  inspectButton: {
+    backgroundColor: '#3498db',
+    padding: 5,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  inspectButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
   tTableItem: {
     padding: 15,
     backgroundColor: '#fff',

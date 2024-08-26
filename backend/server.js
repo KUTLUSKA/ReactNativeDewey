@@ -442,6 +442,7 @@ app.get('/api/main-dewey-numbers', (req, res) => {
   });
 });
 
+
 // T Tables Endpoint
 app.get('/api/t-tables', (req, res) => {
   const query = `
@@ -497,6 +498,26 @@ app.get('/api/t-tables/T1-entries', (req, res) => {
     res.json(results);
   });
 });
+// T1 ikinci seviye özel alt kategorileri için endpoint
+app.get('/api/t-tables/T1-subcategories/:category', (req, res) => {
+  const category = req.params.category;
+  
+  const query = `
+    SELECT g1, konu_adi, aciklama
+    FROM tables 
+    WHERE g1 LIKE '${category}%'
+    AND g1 != '' AND g2 = '' AND g3 = '' AND g4 = '' AND g5 = '' AND g6 = '' AND g7 = ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('T1 alt kategorileri alınırken hata:', err);
+      return res.status(500).json({ message: 'T1 alt kategorileri alınırken hata oluştu.' });
+    }
+    res.json(results);
+  });
+});
+
 // T2 girişlerini getiren API endpoint'i
 app.get('/api/t-tables/T2-entries', (req, res) => {
   const query = `
@@ -514,6 +535,7 @@ app.get('/api/t-tables/T2-entries', (req, res) => {
     res.json(results);
   });
 });
+
 // T3 girişlerini getiren API endpoint'i
 app.get('/api/t-tables/T3-entries', (req, res) => {
   const query = `
